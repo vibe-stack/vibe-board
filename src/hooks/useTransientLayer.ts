@@ -17,6 +17,7 @@ type Transient = {
 export function useTransientLayer(layer: Layer) {
   const [t, setT] = useState<Transient>({});
   const orig = useRef(layer);
+  const transientRef = useRef<Transient>({});
 
   // refresh original if id changes (new layer)
   if (orig.current.id !== layer.id) {
@@ -25,15 +26,25 @@ export function useTransientLayer(layer: Layer) {
   }
 
   const apply = useCallback((partial: Transient) => {
-    setT((prev) => ({ ...prev, ...partial }));
+    setT((prev) => {
+      const next = { ...prev, ...partial };
+      transientRef.current = next;
+      return next;
+    });
   }, []);
 
-  const clear = useCallback(() => setT({}), []);
+  const clear = useCallback(() => {
+    transientRef.current = {};
+    setT({});
+  }, []);
 
   const current: Layer = {
     ...(layer as any),
     ...(t as any),
   };
 
-  return { transient: t, current, apply, clear } as const;
+  // keep ref in sync for commit-time reads
+  transientRef.current = { ...(layer as any), ...(t as any) } as any;
+
+  return { transient: t, current, apply, clear, transientRef } as const;
 }

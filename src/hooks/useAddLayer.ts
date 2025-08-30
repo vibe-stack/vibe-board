@@ -39,7 +39,8 @@ export function makeDefaultShape(kind: ShapeKind = "rect"): Omit<Layer, "id"> {
     color: "#eab308",
     dimensions: { x2: 150, y2: 0 },
     position: { x: 0, y: 0 },
-    rotation: 0,
+  rotation: 0,
+  borderWidth: 2,
   } as any;
 }
 

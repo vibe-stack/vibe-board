@@ -27,6 +27,6 @@ export default function AABBOutline({ layer }: { layer: Layer }) {
     return pts;
   }, [w, h]);
   return (
-  <Line points={rectPts} color="#fde047" lineWidth={1.5} renderOrder={1000} />
+  <Line points={rectPts} color="#fde047" lineWidth={1.25} renderOrder={1000} />
   );
 }
