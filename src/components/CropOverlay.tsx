@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useCropStore } from "@/stores/cropStore";
+import { useCanvasInteractionStore } from "@/stores/canvasInteractionStore";
 
 // Renders: a semi-transparent dark quad covering the canvas plane, with a punch-out for crop rect
 // plus 4 draggable corner handles to edit the rect in world units.
@@ -11,6 +12,7 @@ export default function CropOverlay() {
   const update = useCropStore((s) => s.update as any);
   const { camera } = useThree();
   const dragRef = useRef<{ corner?: number; start?: { x: number; y: number }; orig?: { x: number; y: number; w: number; h: number } } | null>(null);
+  const setTransforming = useCanvasInteractionStore((s) => s.setTransforming);
 
   const corners = useMemo(() => {
     if (!rect) return [] as { x: number; y: number }[];
@@ -30,6 +32,7 @@ export default function CropOverlay() {
   if (!rect) return;
   const { x, y, width, height } = rect;
     dragRef.current = { corner: idx, start: { x: e.clientX, y: e.clientY }, orig: { x, y, w: width, h: height } };
+  setTransforming(true);
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerup", onUp, { passive: true });
     window.addEventListener("pointercancel", onUp, { passive: true });
@@ -61,6 +64,7 @@ export default function CropOverlay() {
     window.removeEventListener("pointermove", onMove as any);
     window.removeEventListener("pointerup", onUp as any);
     window.removeEventListener("pointercancel", onUp as any);
+  setTransforming(false);
   };
 
   if (!rect) return null;

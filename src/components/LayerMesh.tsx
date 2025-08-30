@@ -12,7 +12,7 @@ import AABBOutline from "./AABBOutline";
 import { useTransientLayer } from "@/hooks/useTransientLayer";
 import { snapshotCurrentLayers } from "@/utils/history";
 
-export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Layer; isSelected: boolean; onSelect: () => void }) {
+export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: { layer: Layer; isSelected: boolean; onSelect: () => void; zIndex?: number }) {
   const { current, apply, clear, transientRef } = useTransientLayer(layer);
   const rot = (current as any).rotation ?? 0;
   const setTransforming = useCanvasInteractionStore((s) => s.setTransforming);
@@ -39,13 +39,17 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
 
   const onDown = (e: any) => {
     e.stopPropagation();
-  // ensure robust tracking
-  try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch {}
-  window.addEventListener("pointermove", onMove, { passive: true });
-  window.addEventListener("pointerup", onUpOrCancel, { passive: true });
-  window.addEventListener("pointercancel", onUpOrCancel, { passive: true });
-  window.addEventListener("pointerdown", onGlobalPointerDown, { passive: true });
-    onSelect();
+    // Only allow transforms when already selected; otherwise just select and exit
+    if (!isSelected) {
+      onSelect();
+      return;
+    }
+    // ensure robust tracking
+    try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch {}
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUpOrCancel, { passive: true });
+    window.addEventListener("pointercancel", onUpOrCancel, { passive: true });
+    window.addEventListener("pointerdown", onGlobalPointerDown, { passive: true });
     const map = pointersRef.current;
     map.set(e.pointerId, { x: e.clientX, y: e.clientY });
     setTransforming(true);
@@ -193,7 +197,7 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
 
   return (
     <group
-      position={[current.position.x, current.position.y, 0]}
+      position={[current.position.x, current.position.y, zIndex * 0.001]}
       rotation={[0, 0, (current as any).rotation ?? 0]}
       onPointerDown={onDown}
       // movement/ups handled by window listeners for robustness
@@ -201,7 +205,126 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
       {current.type === "image" && <ImageMesh layer={current as any} />}
       {current.type === "text" && <TextMesh layer={current as any} />}
       {current.type === "shape" && <ShapeMesh layer={current as any} />}
+      {/* Rectangle resize handles when selected */}
+      {isSelected && current.type === "shape" && (current as any).shape === "rect" && (
+        <RectResizeHandles
+          width={(current as any).dimensions.width}
+          height={(current as any).dimensions.height}
+          rotation={(current as any).rotation || 0}
+          onResize={(w, h) => {
+            const d = (current as any).dimensions;
+            apply({ dimensions: { ...d, width: Math.max(4, w), height: Math.max(4, h) } as any });
+          }}
+          onCommit={() => {
+            const merged: any = (transientRef as any).current ?? current;
+            if (merged) {
+              updateLayer(current.id, { dimensions: { ...(merged.dimensions as any) } as any });
+              snapshotCurrentLayers();
+            }
+            clear();
+          }}
+          setTransforming={setTransforming}
+          camera={camera as any}
+        />
+      )}
       {isSelected && <AABBOutline layer={current as any} />}
+    </group>
+  );
+}
+
+function RectResizeHandles({
+  width,
+  height,
+  rotation,
+  onResize,
+  onCommit,
+  setTransforming,
+  camera,
+}: {
+  width: number;
+  height: number;
+  rotation: number;
+  onResize: (w: number, h: number) => void;
+  onCommit: () => void;
+  setTransforming: (v: boolean) => void;
+  camera: THREE.OrthographicCamera;
+}) {
+  const dragRef = useRef<{ side?: "left" | "right" | "top" | "bottom"; start?: { x: number; y: number }; base?: { w: number; h: number } } | null>(null);
+  const gap = 10;
+  const barLen = 28;
+  const barThick = 8;
+  const handleColor = "#fef08a";
+
+  const startDrag = (e: any, side: "left" | "right" | "top" | "bottom") => {
+    e.stopPropagation();
+    try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch {}
+    dragRef.current = { side, start: { x: e.clientX, y: e.clientY }, base: { w: width, h: height } };
+    setTransforming(true);
+    window.addEventListener("pointermove", onMove as any, { passive: true });
+    window.addEventListener("pointerup", endDrag as any, { passive: true });
+    window.addEventListener("pointercancel", endDrag as any, { passive: true });
+  };
+  const onMove = (e: PointerEvent) => {
+    const d = dragRef.current; if (!d || !d.start || !d.base) return;
+    const zoom = (camera as any).zoom || 1;
+    const dxWorld = (e.clientX - d.start.x) / zoom;
+    const dyWorld = -(e.clientY - d.start.y) / zoom;
+    const cos = Math.cos(-rotation);
+    const sin = Math.sin(-rotation);
+    const localX = dxWorld * cos - dyWorld * sin;
+    const localY = dxWorld * sin + dyWorld * cos;
+    let w = d.base.w;
+    let h = d.base.h;
+    switch (d.side) {
+      case "right": w = d.base.w + 2 * localX; break;
+      case "left": w = d.base.w - 2 * localX; break;
+      case "top": h = d.base.h + 2 * localY; break;
+      case "bottom": h = d.base.h - 2 * localY; break;
+    }
+    onResize(Math.max(4, w), Math.max(4, h));
+  };
+  const endDrag = (e: PointerEvent) => {
+    try { (e.target as Element).releasePointerCapture?.((e as any).pointerId); } catch {}
+    dragRef.current = null;
+    window.removeEventListener("pointermove", onMove as any);
+    window.removeEventListener("pointerup", endDrag as any);
+    window.removeEventListener("pointercancel", endDrag as any);
+    onCommit();
+    setTransforming(false);
+  };
+
+  // Simple bar with end-caps
+  const Bar = ({ side }: { side: "left" | "right" | "top" | "bottom" }) => {
+    const isHorizontal = side === "left" || side === "right";
+    const pos: [number, number] = [
+      side === "left" ? -(width / 2 + gap) : side === "right" ? width / 2 + gap : 0,
+      side === "top" ? height / 2 + gap : side === "bottom" ? -(height / 2 + gap) : 0,
+    ];
+    const rot = isHorizontal ? 0 : Math.PI / 2;
+    return (
+      <group position={[pos[0], pos[1], 0.02]} rotation={[0, 0, rot]} onPointerDown={(e: any) => startDrag(e, side)}>
+        <mesh>
+          <planeGeometry args={[barLen, barThick]} />
+          <meshBasicMaterial color={handleColor} />
+        </mesh>
+        <mesh position={[-barLen / 2, 0, 0]}>
+          <circleGeometry args={[barThick / 2, 24]} />
+          <meshBasicMaterial color={handleColor} />
+        </mesh>
+        <mesh position={[barLen / 2, 0, 0]}>
+          <circleGeometry args={[barThick / 2, 24]} />
+          <meshBasicMaterial color={handleColor} />
+        </mesh>
+      </group>
+    );
+  };
+
+  return (
+    <group>
+      <Bar side="left" />
+      <Bar side="right" />
+      <Bar side="top" />
+      <Bar side="bottom" />
     </group>
   );
 }

@@ -95,7 +95,7 @@ export default function LeftContextPanel() {
                 <Popover.Popup className="z-[100] rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur-sm p-3 text-neutral-100 shadow-xl w-64">
                   <label className="text-xs text-neutral-400">Text</label>
                   <textarea
-                    className="mt-1 w-full rounded-md bg-black/30 border border-white/10 p-2 text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                    className="mt-1 w-full text-[16px] rounded-md bg-black/30 border border-white/10 p-2 text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
                     defaultValue={(selected as any).content}
                     onChange={(e) => updateLayer(selected.id, { content: e.target.value } as any)}
                   />

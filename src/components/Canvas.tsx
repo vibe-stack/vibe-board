@@ -123,8 +123,8 @@ export default function Canvas() {
           fadeStrength={1}
           onClick={onBackgroundClick}
   />)}
-        {layers.map((l) => (
-          <LayerMesh key={l.id} layer={l} isSelected={l.id === selectedId} onSelect={() => select(l.id)} />)
+        {layers.map((l, idx) => (
+          <LayerMesh key={l.id} layer={l} isSelected={l.id === selectedId} onSelect={() => select(l.id)} zIndex={idx} />)
         )}
   {/* Crop overlay on top of everything */}
   {cropActive && <CropOverlay />}
