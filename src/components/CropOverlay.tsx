@@ -7,13 +7,13 @@ import { useCropStore } from "@/stores/cropStore";
 // Renders: a semi-transparent dark quad covering the canvas plane, with a punch-out for crop rect
 // plus 4 draggable corner handles to edit the rect in world units.
 export default function CropOverlay() {
-  const { rect, update } = useCropStore((s) => ({ rect: s.rect, update: s.update }));
+  const rect = useCropStore((s) => s.rect as any);
+  const update = useCropStore((s) => s.update as any);
   const { camera } = useThree();
   const dragRef = useRef<{ corner?: number; start?: { x: number; y: number }; orig?: { x: number; y: number; w: number; h: number } } | null>(null);
 
-  if (!rect) return null;
-
   const corners = useMemo(() => {
+    if (!rect) return [] as { x: number; y: number }[];
     const { x, y, width, height } = rect;
     const hw = width / 2, hh = height / 2;
     return [
@@ -27,7 +27,8 @@ export default function CropOverlay() {
   const onDown = (e: any, idx: number) => {
     e.stopPropagation();
     try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch {}
-    const { x, y, width, height } = rect;
+  if (!rect) return;
+  const { x, y, width, height } = rect;
     dragRef.current = { corner: idx, start: { x: e.clientX, y: e.clientY }, orig: { x, y, w: width, h: height } };
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerup", onUp, { passive: true });
@@ -62,6 +63,7 @@ export default function CropOverlay() {
     window.removeEventListener("pointercancel", onUp as any);
   };
 
+  if (!rect) return null;
   return (
     <group position={[0, 0, 2]}>
       {/* Dark overlay using two quads: outside area */}

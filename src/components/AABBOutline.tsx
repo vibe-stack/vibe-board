@@ -6,6 +6,7 @@ import { Layer } from "@/models/Layer";
 import { useTextMetricsStore } from "@/stores/textMetricsStore";
 
 export default function AABBOutline({ layer }: { layer: Layer }) {
+  const metrics = useTextMetricsStore((s) => s.byId);
   let w = 0, h = 0;
   if (layer.type === "image") {
     w = layer.width; h = layer.height;
@@ -15,7 +16,7 @@ export default function AABBOutline({ layer }: { layer: Layer }) {
     else if ("radius" in d) { w = h = d.radius * 2; }
     else { w = Math.abs(d.x2); h = Math.abs(d.y2); }
   } else if (layer.type === "text") {
-    const m = useTextMetricsStore((s) => s.byId[layer.id]);
+    const m = metrics[layer.id];
     if (m) { w = m.width; h = m.height; }
     else { w = layer.fontSize * 4; h = layer.fontSize * 1.4; }
   }

@@ -5,6 +5,12 @@ import { ShapeLayer } from "@/models/Layer";
 import { Line } from "@react-three/drei";
 
 export default function ShapeMesh({ layer }: { layer: ShapeLayer }) {
+  const linePoints = useMemo(() => {
+    if (layer.shape !== "line") return [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)];
+    const d = layer.dimensions as { x2: number; y2: number };
+    return [new THREE.Vector3(0, 0, 0), new THREE.Vector3(d.x2, d.y2, 0)];
+  }, [layer.shape, (layer.dimensions as any).x2, (layer.dimensions as any).y2]);
+
   if (layer.shape === "rect") {
     const dims = layer.dimensions as { width: number; height: number };
     return (
@@ -29,15 +35,11 @@ export default function ShapeMesh({ layer }: { layer: ShapeLayer }) {
     );
   }
   // line
-  const dims = layer.dimensions as { x2: number; y2: number };
-  const points = useMemo(() => [new THREE.Vector3(0, 0, 0), new THREE.Vector3(dims.x2, dims.y2, 0)], [dims.x2, dims.y2]);
   return (
     <>
-      {/* base colored stroke */}
-      <Line points={points} color={layer.color} lineWidth={Math.max(1, Number(layer.borderWidth) || 1)} />
-      {/* optional border outline on top */}
+      <Line points={linePoints} color={layer.color} lineWidth={Math.max(1, Number(layer.borderWidth) || 1)} />
       {layer.borderWidth ? (
-        <Line points={points} color={layer.borderColor || "#000"} lineWidth={Number(layer.borderWidth) + 1} />
+        <Line points={linePoints} color={layer.borderColor || "#000"} lineWidth={Number(layer.borderWidth) + 1} />
       ) : null}
     </>
   );
