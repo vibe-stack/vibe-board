@@ -8,12 +8,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLayersStore } from "@/stores/layersStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { makeImageFromFile } from "@/hooks/useAddLayer";
+import { useFileDrop } from "@/hooks/useFileDrop";
+import { snapshotCurrentLayers } from "@/utils/history";
 
 export default function Home() {
   const { layers, addLayer } = useLayersStore();
   const { reset } = useHistoryStore();
-  const [dragOver, setDragOver] = useState(false);
   const pageRef = useRef<HTMLDivElement | null>(null);
+  const { dragOver, handleDragOver, handleDragLeave, handleDrop } = useFileDrop(async (file) => {
+    if (!file.type.startsWith("image/")) return;
+    const layer = await makeImageFromFile(file);
+    addLayer(layer as any);
+    snapshotCurrentLayers();
+  });
 
   useEffect(() => {
     if (layers.length === 0) {
@@ -53,23 +60,7 @@ export default function Home() {
   }, [layers.length, addLayer, reset]);
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-[#0b0d10] text-neutral-200"
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={async (e) => {
-        e.preventDefault();
-        setDragOver(false);
-        const file = e.dataTransfer?.files?.[0];
-        if (!file) return;
-        if (!file.type.startsWith("image/")) return;
-        const layer = await makeImageFromFile(file);
-        addLayer(layer as any);
-        // history snapshot will be captured by TopBar undo via explicit actions elsewhere if needed
-      }}
-    >
+  <div ref={pageRef} className="min-h-screen bg-[#0b0d10] text-neutral-200" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
       <TopBar />
       <main className="pt-16 pb-28 sm:pb-36">
         {/* Canvas is now full-viewport background */}

@@ -39,6 +39,11 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
 
   const onDown = (e: any) => {
     e.stopPropagation();
+  // ensure robust tracking
+  try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch {}
+  window.addEventListener("pointermove", onMove, { passive: true });
+  window.addEventListener("pointerup", onUpOrCancel, { passive: true });
+  window.addEventListener("pointercancel", onUpOrCancel, { passive: true });
     onSelect();
     const map = pointersRef.current;
     map.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -120,6 +125,7 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
 
   const onUpOrCancel = (e: any) => {
     const map = pointersRef.current;
+  try { (e.target as Element).releasePointerCapture?.(e.pointerId); } catch {}
     if (map.has(e.pointerId)) {
       map.delete(e.pointerId);
       if (map.size < 2) {
@@ -133,6 +139,9 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
         }
         clear();
         setTransforming(false);
+    window.removeEventListener("pointermove", onMove as any);
+    window.removeEventListener("pointerup", onUpOrCancel as any);
+    window.removeEventListener("pointercancel", onUpOrCancel as any);
       }
     }
   };
@@ -142,11 +151,7 @@ export default function LayerMesh({ layer, isSelected, onSelect }: { layer: Laye
       position={[current.position.x, current.position.y, 0]}
       rotation={[0, 0, (current as any).rotation ?? 0]}
       onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUpOrCancel}
-      onPointerCancel={onUpOrCancel}
-      onPointerOut={onUpOrCancel}
-      onPointerLeave={onUpOrCancel}
+      // movement/ups handled by window listeners for robustness
     >
       {current.type === "image" && <ImageMesh layer={current as any} />}
       {current.type === "text" && <TextMesh layer={current as any} />}

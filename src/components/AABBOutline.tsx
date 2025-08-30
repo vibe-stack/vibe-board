@@ -5,7 +5,6 @@ import { Line } from "@react-three/drei";
 import { Layer } from "@/models/Layer";
 
 export default function AABBOutline({ layer }: { layer: Layer }) {
-  const rot = (layer as any).rotation ?? 0;
   let w = 0, h = 0;
   if (layer.type === "image") {
     w = layer.width; h = layer.height;
@@ -28,8 +27,6 @@ export default function AABBOutline({ layer }: { layer: Layer }) {
     return pts;
   }, [w, h]);
   return (
-    <group position={[layer.position.x, layer.position.y, 0]} rotation={[0, 0, rot]}>
-      <Line points={rectPts} color="#fde047" lineWidth={1.5} renderOrder={1000} />
-    </group>
+  <Line points={rectPts} color="#fde047" lineWidth={1.5} renderOrder={1000} />
   );
 }

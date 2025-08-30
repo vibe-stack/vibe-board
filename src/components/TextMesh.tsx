@@ -6,8 +6,8 @@ import { TextLayer } from "@/models/Layer";
 export default function TextMesh({ layer }: { layer: TextLayer }) {
   return (
     <Text
-      position={[layer.position.x, layer.position.y, 0]}
-      rotation={[0, 0, layer.rotation ?? 0]}
+  position={[0, 0, 0]}
+  rotation={[0, 0, 0]}
       color={layer.color}
       fontSize={layer.fontSize}
       anchorX="center"

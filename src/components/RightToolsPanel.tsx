@@ -1,5 +1,5 @@
 "use client";
-import { Image as ImageIcon, Type, Shapes, Pointer } from "lucide-react";
+import { Image as ImageIcon, Type, Square, Pointer } from "lucide-react";
 import { useSelectionStore } from "@/stores/selectionStore";
 import { useRef } from "react";
 import { useLayersStore } from "@/stores/layersStore";
@@ -10,7 +10,7 @@ const tools = [
   { key: "select", label: "Select", icon: Pointer },
   { key: "image", label: "Image", icon: ImageIcon },
   { key: "text", label: "Text", icon: Type },
-  { key: "shape", label: "Shape", icon: Shapes },
+  { key: "shape", label: "Shape", icon: Square },
 ] as const;
 
 export default function RightToolsPanel() {
@@ -36,10 +36,10 @@ export default function RightToolsPanel() {
     }
     if (key === "shape") {
       const layer = makeDefaultShape(defaultShape);
-  const id = addLayer(layer as any);
-  select(id);
-  snapshot([...(layers as any), { ...(layer as any), id }]);
-      setTool("select");
+      const id = addLayer(layer as any);
+      select(id);
+      snapshot([...(layers as any), { ...(layer as any), id }]);
+      setTool("shape");
       return;
     }
     setTool(key as any);
