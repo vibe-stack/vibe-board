@@ -1,5 +1,5 @@
 "use client";
-import { Circle, Minus, Square, PaintBucket } from "lucide-react";
+import { Circle, Minus, Square, PaintBucket, Pencil } from "lucide-react";
 import { useSelectionStore } from "@/stores/selectionStore";
 import { useLayersStore } from "@/stores/layersStore";
 import { useMemo, useState, useCallback } from "react";
@@ -16,6 +16,7 @@ export default function LeftContextPanel() {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
   const [fillOpen, setFillOpen] = useState(false);
   const [strokeOpen, setStrokeOpen] = useState(false);
+  const [textOpen, setTextOpen] = useState(false);
 
   const colorSize = 28; // smaller square swatches for a slim panel
 
@@ -47,7 +48,8 @@ export default function LeftContextPanel() {
     setShapeMenuOpen(false);
   }, [selected, updateLayer]);
 
-  const panelClass = "pointer-events-auto fixed left-2 bottom-28 sm:bottom-32 z-50";
+  // Align roughly with RightToolsPanel (which is bottom-36 sm:bottom-40). Keep same bottom.
+  const panelClass = "pointer-events-auto fixed left-2 bottom-36 sm:bottom-40 z-50";
 
   // nothing selected: render nothing (hooks remain mounted above)
   if (!selected) return null;
@@ -76,6 +78,27 @@ export default function LeftContextPanel() {
                     <button onClick={() => setShape("circle")} className="px-2 py-1 rounded-lg bg-white/70 dark:bg-white/10 hover:bg-white/90 dark:hover:bg-white/20 text-sm">Circle</button>
                     <button onClick={() => setShape("line")} className="px-2 py-1 rounded-lg bg-white/70 dark:bg-white/10 hover:bg-white/90 dark:hover:bg-white/20 text-sm">Line</button>
                   </div>
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+        )}
+
+        {/* Text edit (popover) */}
+        {selected.type === "text" && (
+          <Popover.Root open={textOpen} onOpenChange={(o) => setTextOpen(o)}>
+            <Popover.Trigger className="w-10 h-10 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition" aria-label="Edit text">
+              <Pencil size={18} />
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Positioner side="right" align="start" sideOffset={8} collisionPadding={8} className="z-[100]">
+                <Popover.Popup className="z-[100] rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur-sm p-3 text-neutral-100 shadow-xl w-64">
+                  <label className="text-xs text-neutral-400">Text</label>
+                  <textarea
+                    className="mt-1 w-full rounded-md bg-black/30 border border-white/10 p-2 text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                    defaultValue={(selected as any).content}
+                    onChange={(e) => updateLayer(selected.id, { content: e.target.value } as any)}
+                  />
                 </Popover.Popup>
               </Popover.Positioner>
             </Popover.Portal>
@@ -161,8 +184,7 @@ export default function LeftContextPanel() {
           </Popover.Portal>
         </Popover.Root>
 
-        {/* subtle hint for mobile */}
-        <div className="text-[10px] text-neutral-400">Tap to edit</div>
+  {/* removed hint */}
       </div>
     </div>
   );

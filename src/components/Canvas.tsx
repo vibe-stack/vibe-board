@@ -1,7 +1,7 @@
 "use client";
 import { Canvas as R3FCanvas, useThree } from "@react-three/fiber";
 import { Grid, MapControls, OrbitControls } from "@react-three/drei";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLayersStore } from "@/stores/layersStore";
 import { useSelectionStore } from "@/stores/selectionStore";
 import * as THREE from "three";
@@ -10,6 +10,8 @@ import { useCanvasInteractionStore } from "@/stores/canvasInteractionStore";
 import LayerMesh from "./LayerMesh";
 import { makeDefaultShape, makeDefaultText } from "@/hooks/useAddLayer";
 import { useHistoryStore } from "@/stores/historyStore";
+import { useCropStore } from "@/stores/cropStore";
+import CropOverlay from "./CropOverlay";
 
 const WORLD_W = 800;
 const WORLD_H = 600;
@@ -20,6 +22,8 @@ export default function Canvas() {
   const { snapshot } = useHistoryStore();
   const setExporter = useCanvasExportStore((s) => s.setExporter);
   const clearExporter = useCanvasExportStore((s) => s.clearExporter);
+  const cropActive = useCropStore((s) => s.active);
+  const cropRect = useCropStore((s) => s.rect);
   const glRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.Camera | null>(null);
@@ -28,15 +32,45 @@ export default function Canvas() {
   useEffect(() => {
     setExporter(async () => {
       if (!glRef.current || !sceneRef.current || !cameraRef.current) return null;
-      const prevBg = sceneRef.current.background;
-      sceneRef.current.background = new THREE.Color("#111315");
-      glRef.current.render(sceneRef.current, cameraRef.current);
-      const dataUrl = glRef.current.domElement.toDataURL("image/png");
-      sceneRef.current.background = prevBg as any;
-      return dataUrl;
+      const gl = glRef.current;
+      const scene = sceneRef.current;
+      const cam = cameraRef.current as THREE.OrthographicCamera;
+      // Save state
+      const prevBg = scene.background;
+      scene.background = new THREE.Color("#111315");
+
+      // Render full scene to a texture
+      gl.render(scene, cam);
+      const full = gl.domElement;
+
+      if (!cropRect) {
+        const url = full.toDataURL("image/png");
+        scene.background = prevBg as any;
+        return url;
+      }
+      // Compute pixel rect from world cropRect using ortho zoom
+      const zoom = cam.zoom || 1;
+      const pxPerUnit = zoom; // 1 world unit = zoom pixels given our mapping in drag math
+      const { x, y, width, height } = cropRect;
+      const cx = full.width / 2;
+      const cy = full.height / 2;
+      const left = Math.max(0, Math.round(cx + x * pxPerUnit - (width * pxPerUnit) / 2));
+      const top = Math.max(0, Math.round(cy - y * pxPerUnit - (height * pxPerUnit) / 2));
+      const w = Math.min(full.width - left, Math.round(width * pxPerUnit));
+      const h = Math.min(full.height - top, Math.round(height * pxPerUnit));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, w);
+      canvas.height = Math.max(1, h);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { scene.background = prevBg as any; return full.toDataURL("image/png"); }
+      ctx.drawImage(full, left, top, w, h, 0, 0, w, h);
+      const url = canvas.toDataURL("image/png");
+      scene.background = prevBg as any;
+      return url;
     });
     return () => clearExporter();
-  }, [setExporter, clearExporter]);
+  }, [setExporter, clearExporter, cropRect]);
 
   const onBackgroundClick = (e: any) => {
     if (activeTool === "text") {
@@ -70,7 +104,8 @@ export default function Canvas() {
         onPointerMissed={() => select(null)}
       >
         <color attach="background" args={["#0b0d10"]} />
-        <Grid
+  {!cropActive && (
+  <Grid
           renderOrder={-10}
           // orient grid into the XY plane so it's face-on to an orthographic camera looking down -Z
           position={[0, 0, -1]}
@@ -87,10 +122,12 @@ export default function Canvas() {
           fadeDistance={1000}
           fadeStrength={1}
           onClick={onBackgroundClick}
-        />
+  />)}
         {layers.map((l) => (
           <LayerMesh key={l.id} layer={l} isSelected={l.id === selectedId} onSelect={() => select(l.id)} />)
         )}
+  {/* Crop overlay on top of everything */}
+  {cropActive && <CropOverlay />}
         <MapControls
           enableRotate={false}
           enabled={!isTransforming}

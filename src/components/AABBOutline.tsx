@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { Line } from "@react-three/drei";
 import { Layer } from "@/models/Layer";
+import { useTextMetricsStore } from "@/stores/textMetricsStore";
 
 export default function AABBOutline({ layer }: { layer: Layer }) {
   let w = 0, h = 0;
@@ -14,7 +15,9 @@ export default function AABBOutline({ layer }: { layer: Layer }) {
     else if ("radius" in d) { w = h = d.radius * 2; }
     else { w = Math.abs(d.x2); h = Math.abs(d.y2); }
   } else if (layer.type === "text") {
-    w = layer.fontSize * 4; h = layer.fontSize * 1.4;
+    const m = useTextMetricsStore((s) => s.byId[layer.id]);
+    if (m) { w = m.width; h = m.height; }
+    else { w = layer.fontSize * 4; h = layer.fontSize * 1.4; }
   }
   const rectPts = useMemo(() => {
     const pts = [
