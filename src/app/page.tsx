@@ -1,103 +1,88 @@
-import Image from "next/image";
+"use client";
+import TopBar from "@/components/TopBar";
+import BottomLayerBar from "@/components/BottomLayerBar";
+import RightToolsPanel from "@/components/RightToolsPanel";
+import LeftContextPanel from "@/components/LeftContextPanel";
+import Canvas from "@/components/Canvas";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLayersStore } from "@/stores/layersStore";
+import { useHistoryStore } from "@/stores/historyStore";
+import { makeImageFromFile } from "@/hooks/useAddLayer";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { layers, addLayer } = useLayersStore();
+  const { reset } = useHistoryStore();
+  const [dragOver, setDragOver] = useState(false);
+  const pageRef = useRef<HTMLDivElement | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  useEffect(() => {
+    if (layers.length === 0) {
+      const rectId = addLayer({
+        type: "shape",
+        shape: "rect",
+        color: "#22c55e",
+        dimensions: { width: 250, height: 150 },
+        position: { x: -150, y: -100 },
+        rotation: 0,
+      } as any);
+      const textId = addLayer({
+        type: "text",
+        content: "Hello Meme",
+        fontSize: 48,
+        color: "#f8fafc",
+        position: { x: 0, y: 120 },
+        rotation: 0,
+      } as any);
+      const placeholder =
+        "data:image/svg+xml;utf8," +
+        encodeURIComponent(
+          `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='100%' height='100%' fill='#e5e7eb'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='20' fill='#6b7280'>Image</text></svg>`
+        );
+      const imgId = addLayer({
+        type: "image",
+        url: placeholder,
+        width: 300,
+        height: 200,
+        position: { x: 180, y: -50 },
+        rotation: 0,
+      } as any);
+  // initialize history present state with actual layers snapshot
+  const current = (useLayersStore as any).getState().layers as any[];
+  reset(current);
+    }
+  }, [layers.length, addLayer, reset]);
+
+  return (
+    <div ref={pageRef} className="min-h-screen bg-[#0b0d10] text-neutral-200"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={async (e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) return;
+        const layer = await makeImageFromFile(file);
+        addLayer(layer as any);
+        // history snapshot will be captured by TopBar undo via explicit actions elsewhere if needed
+      }}
+    >
+      <TopBar />
+      <main className="pt-16 pb-28 sm:pb-36">
+        {/* Canvas is now full-viewport background */}
+        <Canvas />
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <LeftContextPanel />
+      <RightToolsPanel />
+      <BottomLayerBar />
+      {dragOver && (
+        <div className="fixed inset-0 z-40 grid place-items-center pointer-events-none">
+          <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-neutral-100">Drop image to add</div>
+        </div>
+      )}
     </div>
   );
 }
