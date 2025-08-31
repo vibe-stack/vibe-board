@@ -1,28 +1,64 @@
-2D Meme Editor Demo (Next.js + R3F + Zustand)
+# Vibe Board
 
-Features
-- Orthographic 2D canvas using React Three Fiber
-- Image, Text, Shape layer types
-- Right tools panel to insert: Image picker, Text ("Text"), Shape (defaults to Rect)
-- Left contextual panel for Shape tool to change default shape (Rect/Circle/Line)
-- Drag-and-drop images anywhere to add as a new layer
-- Touch gestures on a selected layer: 1 finger to move, 2 fingers to scale + rotate
-- Undo/redo via snapshots (10 steps) — interactions batch on commit
-- Local-only image upload (FileReader)
+Live demo: https://vibe-stack.github.io/vibe-board
 
-Getting started
-1. Install deps
-	```bash
-	npm install
-	```
-2. Run the dev server
-	```bash
-	npm run dev
-	```
-3. Open http://localhost:3000
+A mobile-first meme editor for creating, composing, and exporting memes and simple visuals on phones and tablets.
 
-Notes
-- Canvas is 800x600 world units. Tap/click layers to select.
-- Use the right tools to add. For Shape, pick variant in the left panel.
-- Drag with one finger/mouse to move; pinch-rotate with two fingers to scale/rotate; release to commit (undo-friendly).
-- Code is modular: see `src/models`, `src/stores`, `src/components`, `src/hooks`, `src/utils`.
+Built with Next.js, React, Three.js (React Three Fiber), and Zustand for state — focused on fast, tactile editing on mobile devices.
+
+## Features
+
+- Mobile-first UI and touch gestures
+- Multi-layer editor (images, text, shapes)
+- Drag, resize, rotate and reorder layers
+- Text editing with basic styling and layout
+- Image import and crop overlay
+- History (undo/redo) and transient layers
+- Export/share overlay optimized for iOS
+
+## Quick start
+
+Prerequisites: Node.js (18+) and npm.
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server (uses Next.js):
+
+```bash
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+npm start
+```
+
+The app will be available at http://localhost:3000 by default when running the dev server.
+
+## Project structure (high level)
+
+- `src/components` — UI, canvas and editing components
+- `src/stores` — Zustand stores for canvas, layers, selection and history
+- `src/hooks` — custom hooks used across the app
+- `src/utils` — utility helpers (image, history, metrics)
+- `public` — static assets and icons
+
+## Contributing
+
+Contributions, issues and feature requests are welcome. Please open an issue or submit a pull request. Keep changes small and focused; include a short description of the problem and how to reproduce it.
+
+## Demo
+
+View the live demo (hosted): https://vibe-stack.github.io/vibe-board
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE.md` file for details.
+
+
