@@ -3,6 +3,7 @@ import React, { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useThree } from "@react-three/fiber";
 import { useCanvasInteractionStore } from "@/stores/canvasInteractionStore";
+import { useCropStore } from "@/stores/cropStore";
 import { useLayersStore } from "@/stores/layersStore";
 import { Layer } from "@/models/Layer";
 import ImageMesh from "./ImageMesh";
@@ -13,6 +14,8 @@ import { useTransientLayer } from "@/hooks/useTransientLayer";
 import { snapshotCurrentLayers } from "@/utils/history";
 
 export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: { layer: Layer; isSelected: boolean; onSelect: () => void; zIndex?: number }) {
+  const cropActive = useCropStore((s) => s.active);
+  const isExporting = useCanvasInteractionStore((s) => s.isExporting);
   const { current, apply, clear, transientRef } = useTransientLayer(layer);
   const rot = (current as any).rotation ?? 0;
   const setTransforming = useCanvasInteractionStore((s) => s.setTransforming);
@@ -39,6 +42,10 @@ export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: {
 
   const onDown = (e: any) => {
     e.stopPropagation();
+  if (cropActive || isExporting || (layer as any).locked) {
+      // ignore interactions when locked
+      return;
+    }
     // Only allow transforms when already selected; otherwise just select and exit
     if (!isSelected) {
       onSelect();
@@ -195,6 +202,9 @@ export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: {
     }
   };
 
+  // Skip rendering when hidden, but keep hooks order intact
+  if ((layer as any).visible === false) return null as any;
+
   return (
     <group
       position={[current.position.x, current.position.y, zIndex * 0.001]}
@@ -206,7 +216,7 @@ export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: {
       {current.type === "text" && <TextMesh layer={current as any} />}
       {current.type === "shape" && <ShapeMesh layer={current as any} />}
       {/* Rectangle resize handles when selected */}
-      {isSelected && current.type === "shape" && (current as any).shape === "rect" && (
+  {!cropActive && !isExporting && isSelected && current.type === "shape" && (current as any).shape === "rect" && (
         <RectResizeHandles
           width={(current as any).dimensions.width}
           height={(current as any).dimensions.height}
@@ -227,7 +237,7 @@ export default function LayerMesh({ layer, isSelected, onSelect, zIndex = 0 }: {
           camera={camera as any}
         />
       )}
-      {isSelected && <AABBOutline layer={current as any} />}
+  {!cropActive && !isExporting && isSelected && <AABBOutline layer={current as any} />}
     </group>
   );
 }

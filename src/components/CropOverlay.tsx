@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useCropStore } from "@/stores/cropStore";
@@ -10,9 +10,10 @@ import { useCanvasInteractionStore } from "@/stores/canvasInteractionStore";
 export default function CropOverlay() {
   const rect = useCropStore((s) => s.rect as any);
   const update = useCropStore((s) => s.update as any);
-  const { camera } = useThree();
+  const { camera, size, raycaster } = useThree() as unknown as { camera: THREE.Camera; size: any; raycaster: THREE.Raycaster };
   const dragRef = useRef<{ corner?: number; start?: { x: number; y: number }; orig?: { x: number; y: number; w: number; h: number } } | null>(null);
   const setTransforming = useCanvasInteractionStore((s) => s.setTransforming);
+  const groupRef = useRef<THREE.Group>(null!);
 
   const corners = useMemo(() => {
     if (!rect) return [] as { x: number; y: number }[];
@@ -40,6 +41,7 @@ export default function CropOverlay() {
   const onMove = (e: any) => {
     const d = dragRef.current; if (!d || !d.start || !d.orig) return;
     const zoom = (camera as THREE.OrthographicCamera).zoom || 1;
+    // Convert screen pixel delta to world units via zoom
     const dx = (e.clientX - d.start.x) / zoom;
     const dy = -(e.clientY - d.start.y) / zoom;
     let { x, y, w, h } = d.orig;
@@ -67,9 +69,32 @@ export default function CropOverlay() {
   setTransforming(false);
   };
 
+  useEffect(() => {
+    // Put overlay onto its own layer and ensure camera renders that layer while active
+    if (groupRef.current) {
+      groupRef.current.traverse((obj: THREE.Object3D) => {
+        obj.layers.set(31);
+      });
+    }
+    // Ensure both camera and raycaster can see layer 31 for overlay interactions
+    (camera as THREE.Camera).layers.enable(31);
+    raycaster.layers.enable(31);
+    return () => {
+      // Clean up: hide layer 31 when overlay unmounts
+      (camera as THREE.Camera).layers.disable(31);
+      raycaster.layers.disable(31);
+    };
+  }, [camera, raycaster]);
+
   if (!rect) return null;
+  // Handle sizes: 14px visual with 28-36px invisible hit ring, converted to world units
+  const zoom = (camera as THREE.OrthographicCamera).zoom || 1;
+  const pxToWorld = 1 / zoom;
+  const visualRadius = 10 * pxToWorld; // ~10px
+  const hitRadius = (size.width < 640 ? 36 : 28) * pxToWorld; // larger on small screens
+
   return (
-    <group position={[0, 0, 2]}>
+    <group ref={groupRef} position={[0, 0, 2]}>
       {/* Dark overlay using two quads: outside area */}
       {/* Left */}
       <mesh position={[rect.x - rect.width / 2 - 10000 / 2, rect.y, 0]}>
@@ -98,12 +123,20 @@ export default function CropOverlay() {
         <meshBasicMaterial color="#ffffff" transparent opacity={0.06} depthWrite={false} />
       </mesh>
 
-      {/* Corner handles */}
+      {/* Corner handles with larger invisible hit areas for touch */}
       {corners.map((c, idx) => (
-        <mesh key={idx} position={[c.x, c.y, 0.01]} onPointerDown={(e) => onDown(e, idx)}>
-          <circleGeometry args={[8, 24]} />
-          <meshBasicMaterial color="#fef08a" />
-        </mesh>
+        <group key={idx} position={[c.x, c.y, 0.01]}>
+          {/* Visible knob */}
+          <mesh onPointerDown={(e) => onDown(e, idx)}>
+            <circleGeometry args={[visualRadius, 24]} />
+            <meshBasicMaterial color="#fef08a" />
+          </mesh>
+          {/* Invisible big hit target */}
+          <mesh onPointerDown={(e) => onDown(e, idx)}>
+            <circleGeometry args={[hitRadius, 24]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        </group>
       ))}
     </group>
   );

@@ -6,6 +6,7 @@ export type BaseLayer = {
   position: Vec2; // center-based coordinates
   rotation?: number; // radians
   visible?: boolean;
+  locked?: boolean;
   borderWidth?: number;
   borderColor?: string;
 };

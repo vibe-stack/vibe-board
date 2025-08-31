@@ -1,11 +1,12 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Line } from "@react-three/drei";
 import { Layer } from "@/models/Layer";
 import { useTextMetricsStore } from "@/stores/textMetricsStore";
 
 export default function AABBOutline({ layer }: { layer: Layer }) {
+  const ref = useRef<any>(null);
   const metrics = useTextMetricsStore((s) => s.byId);
   let w = 0, h = 0;
   if (layer.type === "image") {
@@ -30,7 +31,16 @@ export default function AABBOutline({ layer }: { layer: Layer }) {
     ];
     return pts;
   }, [w, h]);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.traverse?.((o: THREE.Object3D) => o.layers.set(30));
+      // For Line object itself
+      ref.current.layers?.set?.(30);
+    }
+  }, []);
   return (
-    <Line points={rectPts} color="#fde047" lineWidth={2.5} renderOrder={1000} />
+    <group ref={ref}>
+      <Line points={rectPts} color="#fde047" lineWidth={2.5} renderOrder={1000} />
+    </group>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
-import { Undo2, Redo2, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, X } from "lucide-react";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useLayersStore } from "@/stores/layersStore";
 import { useCanvasExportStore } from "@/stores/canvasStore";
 import { useCropStore } from "@/stores/cropStore";
+import { useEffect } from "react";
+import { useIOSExportOverlayStore, type IOSOverlayStore } from "../stores/iosExportStore";
 
 export default function TopBar() {
   const { undo, redo } = useHistoryStore();
@@ -11,6 +13,10 @@ export default function TopBar() {
   const { exportImage } = useCanvasExportStore();
   const crop = useCropStore();
   const layers = useLayersStore((s) => s.layers);
+  const canUndo = useHistoryStore((s) => s.past.length > 0);
+  const canRedo = useHistoryStore((s) => s.future.length > 0);
+  const setOverlayImage = useIOSExportOverlayStore((s: IOSOverlayStore) => s.show);
+  const hideOverlay = useIOSExportOverlayStore((s: IOSOverlayStore) => s.hide);
 
   const onUndo = () => {
     const prev = undo();
@@ -61,25 +67,48 @@ export default function TopBar() {
     // Second click: export within crop.rect
     const dataUrl = await exportImage();
     if (!dataUrl) return;
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `meme-${Date.now()}.png`;
-    a.click();
-    crop.finish();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+    if (isIOS) {
+      // Show overlay image with instruction to long-press
+      setOverlayImage(dataUrl);
+      crop.finish();
+    } else {
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `vibeboard-${Date.now()}.png`;
+      a.click();
+      crop.finish();
+    }
+  };
+  const onCancel = () => {
+    crop.cancel();
+    hideOverlay();
   };
 
   return (
     <div className="pointer-events-auto fixed top-2 left-1/2 -translate-x-1/2 z-30 flex items-center justify-between gap-4 px-3 py-2 rounded-2xl backdrop-blur bg-black/40 text-neutral-200 border border-white/10 shadow-lg w-[min(92vw,1000px)]">
-      <div className="flex-1" />
-      <div className="flex items-center gap-3">
-        <button aria-label="Undo" className="p-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition" onClick={onUndo}>
-          <Undo2 size={18} />
-        </button>
-        <button aria-label="Redo" className="p-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition" onClick={onRedo}>
-          <Redo2 size={18} />
+      <div className="flex-1">
+        <button
+          className="px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 active:scale-95 transition font-mono text-sm tracking-wide"
+          onClick={() => window.open("https://x.com/alightinastorm", "_blank")}
+        >
+          vibeboard
         </button>
       </div>
-      <div className="flex-1 flex justify-end">
+      <div className="flex items-center gap-3">
+        <button aria-label="Undo" disabled={!canUndo} className={`p-2 rounded-xl ${canUndo ? "bg-white/5 hover:bg-white/10 active:scale-95" : "bg-white/5 opacity-40"} transition`} onClick={onUndo}>
+          <ArrowLeft size={18} />
+        </button>
+        <button aria-label="Redo" disabled={!canRedo} className={`p-2 rounded-xl ${canRedo ? "bg-white/5 hover:bg-white/10 active:scale-95" : "bg-white/5 opacity-40"} transition`} onClick={onRedo}>
+          <ArrowRight size={18} />
+        </button>
+      </div>
+      <div className="flex-1 flex justify-end items-center gap-2">
+        {crop.active && (
+          <button aria-label="Cancel" className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 active:scale-95 transition" onClick={onCancel}>
+            <span className="inline sm:inline">Cancel</span>
+          </button>
+        )}
         <button aria-label="Save" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/80 hover:bg-emerald-500 text-white active:scale-95 transition" onClick={onSave}>
           <Save size={18} />
           <span className="hidden sm:inline">{crop.active ? "Save" : "Crop"}</span>
