@@ -1,7 +1,8 @@
 {
-  "name": "canvas-test",
+  "name": "vibe-board",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
